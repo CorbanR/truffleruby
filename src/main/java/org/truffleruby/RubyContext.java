@@ -31,6 +31,7 @@ import org.truffleruby.core.array.ArrayOperations;
 import org.truffleruby.core.encoding.EncodingManager;
 import org.truffleruby.core.exception.CoreExceptions;
 import org.truffleruby.core.exception.ExceptionOperations;
+import org.truffleruby.core.hash.PreInitializationManager;
 import org.truffleruby.core.inlined.CoreMethods;
 import org.truffleruby.core.kernel.AtExitManager;
 import org.truffleruby.core.kernel.TraceManager;
@@ -107,6 +108,7 @@ public class RubyContext {
     private final CoreExceptions coreExceptions = new CoreExceptions(this);
     private final EncodingManager encodingManager = new EncodingManager(this);
     private final WeakValuedMap<RopeKey, Regex> regexpCache = new WeakValuedMap<>();
+    private final PreInitializationManager preInitializationManager;
     private final NativeConfiguration nativeConfiguration;
 
     private final CompilerOptions compilerOptions = Truffle.getRuntime().createCompilerOptions();
@@ -125,7 +127,7 @@ public class RubyContext {
     private final Object classVariableDefinitionLock = new Object();
 
     private final boolean preInitialized;
-    private boolean preInitializing;
+    @CompilationFinal private boolean preInitializing;
     private boolean initialized;
     private volatile boolean finalizing;
 
@@ -141,6 +143,8 @@ public class RubyContext {
         this.preInitializing = preInitializeContexts;
         RubyContext.preInitializeContexts = false; // Only the first context is pre-initialized
         this.preInitialized = preInitializing;
+
+        preInitializationManager = preInitializing ? new PreInitializationManager(this) : null;
 
         this.language = language;
         this.env = env;
@@ -289,6 +293,8 @@ public class RubyContext {
 
         threadManager.restartMainThread(Thread.currentThread());
         threadManager.initialize(truffleNFIPlatform, nativeConfiguration);
+
+        preInitializationManager.rehash();
 
         final Object toRunAtInit = Layouts.MODULE.getFields(coreLibrary.getTruffleBootModule()).getConstant("TO_RUN_AT_INIT").getValue();
 
@@ -580,6 +586,10 @@ public class RubyContext {
 
     public EncodingManager getEncodingManager() {
         return encodingManager;
+    }
+
+    public PreInitializationManager getPreInitializationManager() {
+        return preInitializationManager;
     }
 
     public String getRubyHome() {
