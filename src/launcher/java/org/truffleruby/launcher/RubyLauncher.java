@@ -53,8 +53,16 @@ public class RubyLauncher extends AbstractLanguageLauncher {
         new RubyLauncher().launch(args);
     }
 
+    public static boolean isGraalVM() {
+        return System.getProperty("org.graalvm.home") != null;
+    }
+
     // TODO (pitr-ch 22-Feb-2018): replace with a call to sdk API when available
     static boolean isGraal() {
+        if (isGraalVM()) {
+            return true;
+        }
+
         final CommandLineOptions config = new CommandLineOptions();
         config.setOption(OptionsCatalog.GRAAL_WARNING_UNLESS, false);
         config.setOption(OptionsCatalog.POST_BOOT, false);
